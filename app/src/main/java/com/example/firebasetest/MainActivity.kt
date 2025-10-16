@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,6 +40,16 @@ fun MainScreen() {
 
     val result = remember { mutableStateOf("result will show here") }
     val context = LocalContext.current
+
+    DisposableEffect(Unit) {
+        SmsReceiver.onSmsReceived = { number, sender, body ->
+            result.value = "From: $sender : $number \n $body"
+        }
+        onDispose {
+            SmsReceiver.onSmsReceived = null
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
