@@ -2,6 +2,8 @@ package com.example.firebasetest
 
 import android.app.Activity
 import android.os.Bundle
+import android.telephony.SubscriptionInfo
+import android.telephony.SubscriptionManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -63,13 +65,34 @@ fun MainScreen() {
 //        }
 //    }
 
-    DisposableEffect(Unit) {
+/*    DisposableEffect(Unit) {
         SmsReceiver.onSmsReceived = { number, sender, body, subscriptionId ->
             val simInfo = context.getSimSlotFromSubscriptionId(subscriptionId)
             result.value = "From: $sender : $number\nReceived on: $simInfo\n$body"
         }
         onDispose {
             SmsReceiver.onSmsReceived = null
+        }
+    }*/
+
+    DisposableEffect(Unit) {
+        SmsReceiver.onSmsReceived = { number, sender, body, subscriptionId ->
+            val simInfo = context.getSimSlotFromSubscriptionId(subscriptionId)
+            result.value = "From: $sender : $number\nReceived on: $simInfo\n$body"
+        }
+        val subscriptionManager = context.getSystemService(SubscriptionManager::class.java)
+        val listener = object : SubscriptionManager.OnSubscriptionsChangedListener() {
+            override fun onSubscriptionsChanged() {
+                val activeSubs = subscriptionManager.activeSubscriptionInfoList
+                val count = activeSubs?.size ?: 0
+                result.value = "SIMs changed! Current active SIM count: $count"
+            }
+        }
+
+        subscriptionManager.addOnSubscriptionsChangedListener(listener)
+        onDispose {
+            SmsReceiver.onSmsReceived = null
+            subscriptionManager.removeOnSubscriptionsChangedListener(listener)
         }
     }
 
