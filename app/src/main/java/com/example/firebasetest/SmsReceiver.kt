@@ -11,19 +11,21 @@ import android.util.Log
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
-        var onSmsReceived: ((String, String, String) -> Unit)? = null
+        var onSmsReceived: ((String, String, String, Int) -> Unit)? = null
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.i("TAG", "onReceive: ")
         if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION == intent.action) {
             val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+            val subscriptionId = intent.getIntExtra("subscription", -1)
+
             for (msg in messages) {
                 val number = msg.displayOriginatingAddress
                 val text = msg.displayMessageBody
                 val name = getContactName(context, number) ?: number
-                onSmsReceived?.invoke(number,name, text)
-                Log.i("TAG", "onReceive: event: $name : $number : $text")
+                onSmsReceived?.invoke(number, name, text, subscriptionId)
+                Log.i("TAG", "onReceive: event: $name : $number : $text : SIM=$subscriptionId")
             }
         }
     }

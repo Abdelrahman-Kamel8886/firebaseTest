@@ -2,11 +2,15 @@ package com.example.firebasetest
 
 import android.Manifest
 import android.content.Context
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
+import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest
+import com.google.android.gms.auth.api.identity.Identity
 
 fun Context.getSimsCount(): String {
     val subscriptionManager = this.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
@@ -61,3 +65,46 @@ fun Context.getSimsOperators(): String {
         "Error: ${e.message}"
     }
 }
+
+fun Context.getPhoneNumberHintIntent(
+    onSuccess: (IntentSender) -> Unit,
+    onFailure: (String) -> Unit
+) {
+    try {
+        val request = GetPhoneNumberHintIntentRequest.builder().build()
+        val signInClient = Identity.getSignInClient(this)
+
+        signInClient.getPhoneNumberHintIntent(request)
+            .addOnSuccessListener { result ->
+                onSuccess(result.intentSender)
+            }
+            .addOnFailureListener { e ->
+                Log.e("TAG", "Error creating phone number hint intent: ${e.message}")
+                onFailure("Phone number hint not available: ${e.message}")
+            }
+    } catch (e: Exception) {
+        Log.e("TAG", "Error creating phone number hint intent: ${e.message}")
+        onFailure("Error: ${e.message}")
+    }
+}
+
+fun Context.getSimSlotFromSubscriptionId(subscriptionId: Int): String {
+    if (subscriptionId == -1) return "Unknown SIM"
+
+    val subscriptionManager = this.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as? SubscriptionManager
+        ?: return "Subscription manager not available"
+
+    if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+        return "Permission not granted"
+    }
+
+    return try {
+        val info = subscriptionManager.getActiveSubscriptionInfo(subscriptionId)
+        val carrier = info?.carrierName ?: "Unknown"
+        val slot = info?.simSlotIndex ?: -1
+        "SIM ${slot + 1}: $carrier"
+    } catch (e: Exception) {
+        "Error: ${e.message}"
+    }
+}
+

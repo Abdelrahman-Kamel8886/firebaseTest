@@ -1,10 +1,12 @@
 package com.example.firebasetest
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,9 +43,30 @@ fun MainScreen() {
     val result = remember { mutableStateOf("result will show here") }
     val context = LocalContext.current
 
+    val phoneNumberLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        if (activityResult.resultCode == Activity.RESULT_OK) {
+            val phoneNumber = activityResult.data?.getStringExtra("phone_number")
+            result.value = phoneNumber ?: "No phone number selected"
+        } else {
+            result.value = "Phone number selection cancelled"
+        }
+    }
+
+//    DisposableEffect(Unit) {
+//        SmsReceiver.onSmsReceived = { number, sender, body ->
+//            result.value = "From: $sender : $number \n $body"
+//        }
+//        onDispose {
+//            SmsReceiver.onSmsReceived = null
+//        }
+//    }
+
     DisposableEffect(Unit) {
-        SmsReceiver.onSmsReceived = { number, sender, body ->
-            result.value = "From: $sender : $number \n $body"
+        SmsReceiver.onSmsReceived = { number, sender, body, subscriptionId ->
+            val simInfo = context.getSimSlotFromSubscriptionId(subscriptionId)
+            result.value = "From: $sender : $number\nReceived on: $simInfo\n$body"
         }
         onDispose {
             SmsReceiver.onSmsReceived = null
@@ -92,7 +115,15 @@ fun MainScreen() {
 
         Button(
             onClick = {
-
+                context.getPhoneNumberHintIntent(
+                    onSuccess = { intentSender ->
+                        val request = IntentSenderRequest.Builder(intentSender).build()
+                        phoneNumberLauncher.launch(request)
+                    },
+                    onFailure = { errorMessage ->
+                        result.value = errorMessage
+                    }
+                )
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,7 +164,6 @@ fun MainScreen() {
             text = result.value,
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium
-
         )
     }
 }
