@@ -2,15 +2,12 @@ package com.example.firebasetest
 
 import android.Manifest
 import android.content.Context
-import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
-import android.util.Log
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest
-import com.google.android.gms.auth.api.identity.Identity
+
 
 fun Context.getSimsCount(): String {
     val subscriptionManager = this.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE) as SubscriptionManager
@@ -66,7 +63,7 @@ fun Context.getSimsOperators(): String {
     }
 }
 
-fun Context.getPhoneNumberHintIntent(
+/*fun Context.getPhoneNumberHintIntent(
     onSuccess: (IntentSender) -> Unit,
     onFailure: (String) -> Unit
 ) {
@@ -86,7 +83,7 @@ fun Context.getPhoneNumberHintIntent(
         Log.e("TAG", "Error creating phone number hint intent: ${e.message}")
         onFailure("Error: ${e.message}")
     }
-}
+}*/
 
 fun Context.getSimSlotFromSubscriptionId(subscriptionId: Int): String {
     if (subscriptionId == -1) return "Unknown SIM"

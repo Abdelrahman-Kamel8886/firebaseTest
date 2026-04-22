@@ -1,10 +1,12 @@
 package com.example.firebasetest
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.IntentSenderRequest
@@ -28,7 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
+import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest
+import com.google.android.gms.auth.api.identity.Identity
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,15 +47,18 @@ fun MainScreen() {
 
     val result = remember { mutableStateOf("result will show here") }
     val context = LocalContext.current
+    val activity = LocalActivity.current as Activity
 
-    val phoneNumberLauncher = rememberLauncherForActivityResult(
+    val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { activityResult ->
-        if (activityResult.resultCode == Activity.RESULT_OK) {
-            val phoneNumber = activityResult.data?.getStringExtra("phone_number")
-            result.value = phoneNumber ?: "No phone number selected"
+    ) { res ->
+        if (res.resultCode == Activity.RESULT_OK) {
+            val data: Intent? = res.data
+            val credential = Identity.getSignInClient(activity)
+                .getPhoneNumberFromIntent(data)
+            result.value = credential ?: "No number selected"
         } else {
-            result.value = "Phone number selection cancelled"
+            result.value = "User canceled or no number available"
         }
     }
 
@@ -138,15 +144,21 @@ fun MainScreen() {
 
         Button(
             onClick = {
-                context.getPhoneNumberHintIntent(
-                    onSuccess = { intentSender ->
-                        val request = IntentSenderRequest.Builder(intentSender).build()
-                        phoneNumberLauncher.launch(request)
-                    },
-                    onFailure = { errorMessage ->
-                        result.value = errorMessage
-                    }
-                )
+                try {
+                    val request = GetPhoneNumberHintIntentRequest.builder().build()
+                    val client = Identity.getSignInClient(activity)
+                    client.getPhoneNumberHintIntent(request)
+                        .addOnSuccessListener { pendingIntent ->
+                            launcher.launch(
+                                IntentSenderRequest.Builder(pendingIntent).build()
+                            )
+                        }
+                        .addOnFailureListener {
+                            result.value = "Error: ${it.message}"
+                        }
+                } catch (e: Exception) {
+                    result.value = "Exception: ${e.message}"
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
